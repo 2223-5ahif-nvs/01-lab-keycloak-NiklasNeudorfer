@@ -1,0 +1,35 @@
+name: deploy to OraVM
+
+on:
+  push:
+    branches: [ main ]
+
+  workflow_dispatch:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: install ssh key
+        uses: caberger/install-ssh-key@v1.0
+        with:
+          ssh-private-key:  ${{ secrets.SSH_PRIVATE_KEY }}
+          user: ${{ secrets.SSH_USER }}
+          server:  ${{ secrets.SSH_HOST }}
+          alias: server
+
+      - name: deploy to server
+        run: |
+          ls -al
+          ssh server "[[ -d ~/keycloak ]] || mkdir ~/keycloak"
+          ssh server "sudo rm -rf ~/keycloak/docker-compose.yml"
+          scp keycloak/docker-compose.yml server:~/keycloak
+          ssh server "cd ~/keycloak && sudo docker compose pull"
+          ssh server "cd ~/keycloak && sudo docker compose down && sudo docker compose up -d"
